@@ -292,8 +292,10 @@ Module.register("MMM-WeatherChart", {
     // Vorbereite Vorhersagedaten
     let forecastData;
     if (useHourlyForecast) {
+      // Für stündliche Vorhersage: Wähle jeden n-ten Eintrag (hourlyInterval) aus,
+      // beginnend ab Index 1 (nächste Stunde), um die angezeigten Zeitpunkte zu erhalten
       forecastData = this.weatherData.hourly
-        .slice(1)
+        .slice(1)  // Starte ab der nächsten Stunde (Index 1 = erste Vorhersagestunde)
         .filter((_, index) => index % hourlyInterval === 0)
         .slice(0, hourlyPoints);
     } else {
@@ -314,11 +316,27 @@ Module.register("MMM-WeatherChart", {
     const minimumTemperatures = forecastData.map(entry =>
       useHourlyForecast ? null : Math.round(entry.temp.min)
     );
-    const precipitation = forecastData.map((entry) => {
-      const rain = Number(useHourlyForecast ? entry.rain?.["1h"] || 0 : entry.rain || 0);
-      const snow = Number(useHourlyForecast ? entry.snow?.["1h"] || 0 : entry.snow || 0);
-      return Number((rain + snow).toFixed(1));
-    });
+    const precipitation = useHourlyForecast
+      ? forecastData.map((_, k) => {
+          // Für stündliche Vorhersage mit Intervallen: Summiere Niederschlag über das gesamte Intervall
+          // forecastData wurde aus this.weatherData.hourly.slice(1) gefiltert (jeder hourlyInterval-te Eintrag)
+          // k ist der Index in forecastData. Der zugehörige Index in this.weatherData.hourly ist:
+          // originalIndex = 1 + k * hourlyInterval
+          // Für die Summierung brauchen wir die Stunden von originalIndex bis originalIndex + hourlyInterval - 1
+          const originalIndex = 1 + k * hourlyInterval;
+          const startIndex = originalIndex;
+          const endIndex = Math.min(originalIndex + hourlyInterval - 1, this.weatherData.hourly.length - 1);
+          let sum = 0;
+          for (let i = startIndex; i <= endIndex; i++) {
+            const entry = this.weatherData.hourly[i];
+            if (!entry) break;
+            const rain = Number(entry.rain?.["1h"] || 0);
+            const snow = Number(entry.snow?.["1h"] || 0);
+            sum += rain + snow;
+          }
+          return Number(sum.toFixed(1));
+        })
+      : forecastData.map(entry => Number(entry.rain || 0) + Number(entry.snow || 0));
     const weatherIcons = forecastData.map(entry => entry.weather?.[0]?.icon || null);
     const weatherIds = forecastData.map(entry => Number(entry.weather?.[0]?.id) || null);
     const windSpeeds = forecastData.map(entry => Number(entry.wind_speed) || null);
