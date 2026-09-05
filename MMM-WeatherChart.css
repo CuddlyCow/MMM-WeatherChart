@@ -1,0 +1,464 @@
+/* MMM-WeatherChart – Layout für 600 × 1024 Pixel */
+
+/* Globale Einstellungen */
+* {
+  box-sizing: border-box;
+}
+
+/* Modulrahmen */
+.MMM-WeatherChart {
+  display: block;
+  width: 94vw;
+  max-width: 564px;
+}
+
+.MMM-WeatherChart .weather-chart-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+/* Gemeinsames Kartendesign */
+.MMM-WeatherChart .weather-chart-container,
+.MMM-WeatherChart .weather-current-container {
+  background: radial-gradient(
+    ellipse at 50% 45%,
+    rgba(28, 39, 40, 0.5) 0%,
+    rgba(13, 18, 19, 0.88) 70%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+}
+
+/* Vorhersagekarten */
+.MMM-WeatherChart .weather-chart-container {
+  display: flex;
+  position: relative;
+  flex: 0 0 auto;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+  height: 307px;
+  padding: 14px 18px 12px;
+  overflow: hidden;
+}
+
+.MMM-WeatherChart .weather-chart-title {
+  flex: 0 0 auto;
+  margin: 0 0 8px;
+  color: var(--color-text-bright);
+  font-family: var(--font-primary), sans-serif;
+  font-size: var(--font-size-small);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.MMM-WeatherChart .weather-chart-container canvas {
+  display: block;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  height: auto !important;
+}
+
+/* Aktualisierungsanzeige */
+.MMM-WeatherChart .weather-chart-update-info {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 18px;
+  margin: 0;
+  padding: 0;
+  color: var(--color-text-dimmed);
+  font-family: var(--font-primary), sans-serif;
+  font-size: var(--font-size-xsmall);
+  line-height: 1.2;
+}
+
+.MMM-WeatherChart .weather-chart-update-icon {
+  font-size: var(--font-size-small);
+  line-height: 1;
+}
+
+/* Lade- und Fehlermeldungen */
+.MMM-WeatherChart .weather-chart-loading,
+.MMM-WeatherChart .weather-chart-error {
+  font-family: var(--font-primary), sans-serif;
+  font-size: var(--font-size-small);
+  text-align: center;
+}
+
+.MMM-WeatherChart .weather-chart-error {
+  color: #ff7777;
+}
+
+/* Karte „Aktuelles Wetter“ */
+.MMM-WeatherChart .weather-current-container {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
+  grid-template-rows: 28px 160px auto;
+  column-gap: 10px;
+  row-gap: 0;
+  width: 100%;
+  min-height: 224px;
+  padding: 14px 18px 12px;
+}
+
+/* Überschrift links */
+.MMM-WeatherChart .weather-current-title {
+  grid-column: 1 / 3;
+  grid-row: 1;
+  align-self: center;
+  justify-self: start;
+  margin: 0;
+  color: var(--color-text-bright);
+  font-family: var(--font-primary), sans-serif;
+  font-size: var(--font-size-small);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+}
+
+/* Aktualisierungszeit rechts */
+.MMM-WeatherChart .weather-current-container > .weather-chart-update-info {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: center;
+  justify-self: end;
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* Linker Wetterbereich */
+.MMM-WeatherChart .weather-current-primary {
+  display: grid;
+  grid-column: 1;
+  grid-row: 2;
+  grid-template-columns: 90px minmax(0, 1fr);
+  grid-template-rows: 38px 64px 48px;
+  align-content: start;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 5px;
+  width: 100%;
+  height: 160px;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Datum und Uhrzeit */
+.MMM-WeatherChart .weather-current-date-time {
+  display: block;
+  grid-column: 1 / 3;
+  grid-row: 1;
+  align-self: center;
+  justify-self: start;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.68);
+  font-family: var(--font-primary), sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.2;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.MMM-WeatherChart .weather-current-date,
+.MMM-WeatherChart .weather-current-time {
+  display: block;
+}
+
+/* Wettersymbol */
+.MMM-WeatherChart .weather-current-icon {
+  display: flex;
+  grid-column: 1;
+  grid-row: 2;
+  align-self: center;
+  justify-self: center;
+  align-items: center;
+  justify-content: center;
+  width: 90px;
+  height: 64px;
+  color: #ffffff !important;
+  font-size: 58px;
+  line-height: 1;
+}
+
+/* Wetterbeschreibung */
+.MMM-WeatherChart .weather-current-description {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: center;
+  justify-self: start;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--color-text);
+  font-family: var(--font-primary), sans-serif;
+  font-size: var(--font-size-small);
+  line-height: 1.2;
+  text-align: left;
+  overflow-wrap: break-word;
+  word-break: normal;
+  white-space: normal;
+}
+
+/* Temperatur */
+.MMM-WeatherChart .weather-current-temperature-block {
+  display: flex;
+  grid-column: 1 / 3;
+  grid-row: 3;
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  height: auto;
+  min-height: 48px;
+  overflow: visible;
+}
+
+.MMM-WeatherChart .weather-current-temperature {
+  color: var(--color-text-bright);
+  font-family: var(--font-primary), sans-serif;
+  font-size: var(--font-size-large);
+  font-weight: 400;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Rechte Detailfläche */
+.MMM-WeatherChart .weather-current-details {
+  display: grid;
+  grid-column: 2 / 4;
+  grid-row: 2;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  position: relative;
+  z-index: 1;
+  align-self: stretch;
+  align-items: stretch;
+  min-width: 0;
+  min-height: 0;
+  padding: 4px 0 4px var(--detail-side-inset);
+  border-left: 1px solid rgba(255, 255, 255, 0.16);
+  --detail-side-inset: 16px;
+}
+
+/* Abstand der rechten Detailspalte */
+.MMM-WeatherChart .weather-current-detail:nth-child(2),
+.MMM-WeatherChart .weather-current-detail:nth-child(4) {
+  padding-left: var(--detail-side-inset);
+}
+
+/* Horizontale Trennung der Detailreihen */
+.MMM-WeatherChart .weather-current-details::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 14px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+/* Vertikale Trennung der Detailspalten */
+.MMM-WeatherChart .weather-current-details::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% + 9px);
+  width: 1px;
+  background: rgba(255, 255, 255, 0.16);
+  pointer-events: none;
+}
+
+/* Einzelne Wetterdetails */
+.MMM-WeatherChart .weather-current-detail {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-self: stretch;
+  align-items: center;
+  justify-items: start;
+  column-gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Gemeinsame Textstile für Detailwerte und -labels */
+.MMM-WeatherChart .weather-current-detail-text {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-primary), sans-serif;
+}
+
+.MMM-WeatherChart .weather-current-detail-value {
+  color: var(--color-text-bright);
+  font-size: var(--font-size-small);
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.MMM-WeatherChart .weather-current-detail-label {
+  margin-top: 2px;
+  font-size: var(--font-size-xsmall);
+  line-height: 1.15;
+}
+
+/* Symbole für Wetterdetails */
+.MMM-WeatherChart .weather-current-detail-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  font-size: var(--font-size-small);
+  line-height: 1;
+  text-align: center;
+}
+
+/* Farbakzente der Details */
+.MMM-WeatherChart .weather-current-detail:nth-child(1) .weather-current-detail-icon {
+  color: #6bbcf2;
+}
+
+.MMM-WeatherChart .weather-current-detail:nth-child(2) .weather-current-detail-icon {
+  color: #bd8cff;
+}
+
+.MMM-WeatherChart .weather-current-detail:nth-child(4) .weather-current-detail-icon {
+  color: #f5b942;
+}
+
+/* Windrichtungssymbol */
+.MMM-WeatherChart .weather-current-wind-icon {
+  display: block;
+  align-self: center;
+  justify-self: center;
+  width: 32px;
+  height: 28px;
+  background-color: #ffffff;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: 22px 28px;
+  mask-size: 22px 28px;
+  transform-origin: center center;
+}
+
+/* Untere gemeinsame Zeile: Sonnenzeiten und Windskala */
+.MMM-WeatherChart .weather-current-sun-times {
+  display: flex;
+  grid-column: 1;
+  grid-row: 3;
+  align-self: stretch;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 14px 0 0;
+  gap: 18px;
+  transform: translateY(8px);
+}
+
+.MMM-WeatherChart .weather-current-sun-value {
+  color: var(--color-text-bright);
+  font-family: var(--font-primary), sans-serif;
+  font-size: var(--font-size-xsmall);
+  white-space: nowrap;
+}
+
+.MMM-WeatherChart .weather-current-sun-value i {
+  margin-right: 4px;
+  color: rgba(255, 204, 102, 0.9);
+}
+
+/* Windskala */
+.MMM-WeatherChart .weather-current-wind-scale {
+  position: relative;
+  grid-column: 2 / 4;
+  grid-row: 3;
+  align-self: stretch;
+  min-width: 0;
+  padding: 14px 0 0 16px;
+  border-left: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.MMM-WeatherChart .weather-current-wind-scale::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 14px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+.MMM-WeatherChart .weather-current-wind-scale-title {
+  margin-bottom: 5px;
+  color: var(--color-text);
+  font-size: 14px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.MMM-WeatherChart .weather-current-wind-scale-bar {
+  width: 100%;
+  height: 9px;
+  border-radius: 5px;
+  background: linear-gradient(
+    to right,
+    #ffffff 0%,
+    #4696ff 20%,
+    #50c878 40%,
+    #ffdc3c 60%,
+    #ff9628 75%,
+    #eb3c32 90%,
+    #b446dc 100%
+  );
+}
+
+.MMM-WeatherChart .weather-current-wind-scale-labels {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
+  align-items: center;
+  column-gap: 4px;
+  margin-top: 4px;
+  color: var(--color-text);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.MMM-WeatherChart .weather-current-wind-scale-labels span {
+  white-space: nowrap;
+}
+
+.MMM-WeatherChart .weather-current-wind-scale-labels span:not(:last-child) {
+  text-align: left;
+}
+
+.MMM-WeatherChart .weather-current-wind-scale-unit {
+  padding-left: 2px;
+  white-space: nowrap;
+}

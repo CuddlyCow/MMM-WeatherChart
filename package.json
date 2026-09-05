@@ -1,0 +1,11 @@
+{
+  "name": "mmm-weatherchart",
+  "version": "1.0.0",
+  "description": "MagicMirror weather chart using OpenWeather One Call API 3.0",
+  "main": "MMM-WeatherChart.js",
+  "private": true,
+  "dependencies": {
+    "chart.js": "^4.4.0",
+    "chartjs-plugin-datalabels": "^2.2.0"
+  }
+}
