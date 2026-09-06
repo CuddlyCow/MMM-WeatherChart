@@ -336,7 +336,7 @@ Module.register("MMM-WeatherChart", {
           }
           return Number(sum.toFixed(1));
         })
-      : forecastData.map(entry => Number(entry.rain || 0) + Number(entry.snow || 0));
+      : forecastData.map(entry => Number((Number(entry.rain || 0) + Number(entry.snow || 0)).toFixed(1)));
     const weatherIcons = forecastData.map(entry => entry.weather?.[0]?.icon || null);
     const weatherIds = forecastData.map(entry => Number(entry.weather?.[0]?.id) || null);
     const windSpeeds = forecastData.map(entry => Number(entry.wind_speed) || null);
@@ -638,6 +638,7 @@ Module.register("MMM-WeatherChart", {
       labelElement.textContent = label;
 
       const textBlock = document.createElement("div");
+      textBlock.className = "weather-current-detail-text";
       textBlock.appendChild(valueElement);
       textBlock.appendChild(labelElement);
 
@@ -663,20 +664,57 @@ Module.register("MMM-WeatherChart", {
     }
 
     // Füge Details hinzu
-    details.appendChild(createDetail("Luftfeuchtigkeit", `${Number(current.humidity) || 0} %`, "fa-solid fa-droplet"));
+    // Luftfeuchtigkeit mit Taupunkt-Beschriftung
+    const humidityValue = `${Number(current.humidity) || 0} %`;
+    const dewPoint = Number(current.dew_point || 0);
+    const dewPointLabel = this.config.units === "imperial"
+      ? `Taupunkt: ${Math.round(dewPoint * 9/5 + 32)}°F`
+      : `Taupunkt: ${Math.round(dewPoint)}°C`;
+    details.appendChild(createDetail(dewPointLabel, humidityValue, "fa-solid fa-droplet"));
+    
     details.appendChild(createDetail("Luftdruck", `${Number(current.pressure) || 0} hPa`, "fa-solid fa-gauge-high"));
 
+    // Wind mit Böen-Beschriftung
     const displayWindSpeed = this.convertWindSpeed(current.wind_speed);
     const windSpeedText = Number.isFinite(displayWindSpeed)
       ? `${Math.round(displayWindSpeed)} ${this.getWindSpeedUnitLabel()}`
       : "–";
-    details.appendChild(createDetail("Wind", windSpeedText, windIcon));
+    const windGust = this.convertWindSpeed(current.wind_gust);
+    const windGustLabel = Number.isFinite(windGust)
+      ? `Böen: ${Math.round(windGust)} ${this.getWindSpeedUnitLabel()}`
+      : "Böen: –";
+    details.appendChild(createDetail(windGustLabel, windSpeedText, windIcon));
 
-    details.appendChild(createDetail(
-      "Sichtweite",
-      currentWeatherUtils.formatVisibility(current.visibility),
-      "fa-solid fa-eye"
-    ));
+    const uvi = Math.round(Number(current.uvi || 0));
+    const uviLabel = uvi <= 2 ? "niedrig" :
+                     uvi <= 5 ? "mäßig" :
+                     uvi <= 7 ? "hoch" :
+                     uvi <= 10 ? "sehr hoch" : "extrem";
+
+    // UV-Index mit separater Bewertung (kleinere Schrift)
+    const uviDetail = document.createElement("div");
+    uviDetail.className = "weather-current-detail";
+
+    const uviIcon = document.createElement("i");
+    uviIcon.className = "weather-current-detail-icon fa-solid fa-sun";
+    uviIcon.setAttribute("aria-hidden", "true");
+
+    const uviValueElement = document.createElement("div");
+    uviValueElement.className = "weather-current-detail-value";
+    uviValueElement.innerHTML = `${uvi} <span class="xsmall">(${uviLabel})</span>`;
+
+    const uviLabelElement = document.createElement("div");
+    uviLabelElement.className = "weather-current-detail-label dimmed";
+    uviLabelElement.textContent = "UV-Index";
+
+    const uviTextBlock = document.createElement("div");
+    uviTextBlock.className = "weather-current-detail-text";
+    uviTextBlock.appendChild(uviValueElement);
+    uviTextBlock.appendChild(uviLabelElement);
+
+    uviDetail.appendChild(uviIcon);
+    uviDetail.appendChild(uviTextBlock);
+    details.appendChild(uviDetail);
 
     // Sonnenzeiten
     const sunTimes = document.createElement("div");
