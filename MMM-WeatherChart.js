@@ -19,6 +19,7 @@ Module.register("MMM-WeatherChart", {
     },
 
     display: {
+      dateTime: true,
       currentWeather: true,
       dailyForecast: true,
       hourlyForecast: false,
@@ -829,10 +830,11 @@ Module.register("MMM-WeatherChart", {
     if (!showDailyForecast) this.destroyChart("daily");
     if (!showHourlyForecast) this.destroyChart("hourly");
 
-    // Erstelle Datum/Uhrzeit-Karte ganz oben
-    wrapper.appendChild(this.createDateTimeCard());
+    // Prüfe, ob Datum/Uhrzeit-Karte aktiviert ist
+    const showDateTime = this.isCardEnabled("dateTime");
 
     // Erstelle aktivierte Karten
+    if (showDateTime) wrapper.appendChild(this.createDateTimeCard());
     if (showCurrentWeather) wrapper.appendChild(this.createCurrentWeatherCard());
     if (showHourlyForecast) wrapper.appendChild(this.createForecastCard("Stündliche Vorhersage", "hourly"));
     if (showDailyForecast) wrapper.appendChild(this.createForecastCard("Tägliche Vorhersage", "daily"));
