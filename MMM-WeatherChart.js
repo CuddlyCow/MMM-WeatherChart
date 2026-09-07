@@ -6,13 +6,13 @@ Module.register("MMM-WeatherChart", {
     units: "metric",
     appid: null,
 
-    updateInterval: 30 * 60 * 1000, // 30 Minuten
-    cacheMaxAge: 30 * 60 * 1000,    // 30 Minuten
+    updateInterval: 30 * 60 * 1000,
+    cacheMaxAge: 30 * 60 * 1000,
 
     locale: "de-DE",
     lang: "de",
     animationDuration: 700,
-    windSpeedUnit: null, // Standardmäßig null → wird aus `units` abgeleitet
+    windSpeedUnit: null,
 
     daily: {
       days: 6
@@ -44,9 +44,8 @@ Module.register("MMM-WeatherChart", {
     }
   },
 
-  // ==================== LIFECYCLE-METHODEN ====================
+  // ==================== LIFECYCLE ====================
   start() {
-    // Initialisiere Eigenschaften
     this.weatherData = null;
     this.errorMessage = null;
     this.charts = {};
@@ -54,7 +53,6 @@ Module.register("MMM-WeatherChart", {
     this.dateTimeDateElement = null;
     this.dateTimeTimeElement = null;
 
-    // Initialisiere Date/Time-Formatter (nur einmal erstellen)
     this.dateFormatter = new Intl.DateTimeFormat(this.config.locale || "de-DE", {
       weekday: "long",
       day: "numeric",
@@ -69,12 +67,10 @@ Module.register("MMM-WeatherChart", {
       hourCycle: "h23"
     });
 
-    // Starte Timer für Datum/Uhrzeit
     this.currentDateTimeTimer = setInterval(() => {
       this.updateCurrentDateTime();
     }, 1000);
 
-    // Sende Konfiguration an den Backend
     this.sendSocketNotification("WEATHER_CONFIG", {
       lat: this.config.lat,
       lon: this.config.lon,
@@ -87,7 +83,6 @@ Module.register("MMM-WeatherChart", {
   },
 
   stop() {
-    // Räume Timer auf
     if (this.currentDateTimeTimer) {
       clearInterval(this.currentDateTimeTimer);
       this.currentDateTimeTimer = null;
@@ -95,7 +90,6 @@ Module.register("MMM-WeatherChart", {
   },
 
   suspend() {
-    // Räume Timer und Charts auf
     this.stop();
 
     if (this.charts) {
@@ -106,7 +100,7 @@ Module.register("MMM-WeatherChart", {
     }
   },
 
-  // ==================== ABHÄNGIGKEITEN ====================
+  // ==================== DEPENDENCIES ====================
   getScripts() {
     return [
       this.file("node_modules/chart.js/dist/chart.umd.js"),
@@ -126,7 +120,7 @@ Module.register("MMM-WeatherChart", {
     ];
   },
 
-  // ==================== DATUM/ZEIT ====================
+  // ==================== DATE/TIME ====================
   formatCurrentDateTime(date = new Date()) {
     return {
       date: this.dateFormatter.format(date),
@@ -142,7 +136,7 @@ Module.register("MMM-WeatherChart", {
     this.dateTimeTimeElement.textContent = time;
   },
 
-  // ==================== WETTER-ICONS ====================
+  // ==================== WEATHER ICONS ====================
   getWeatherIconClass({ iconCode, weatherId } = {}) {
     const code = String(iconCode || "01d");
     const isDay = code.endsWith("d");
@@ -150,7 +144,6 @@ Module.register("MMM-WeatherChart", {
 
     const dayOrNight = (dayClass, nightClass) => isDay ? dayClass : nightClass;
 
-    // OpenWeather-Kennungen (kompakt)
     if (id >= 200 && id <= 232) return dayOrNight("wi-day-thunderstorm", "wi-night-alt-thunderstorm");
     if (id >= 300 && id <= 321) return dayOrNight("wi-day-sprinkle", "wi-night-alt-sprinkle");
     if (id >= 500 && id <= 504) return dayOrNight("wi-day-rain", "wi-night-alt-rain");
@@ -162,7 +155,6 @@ Module.register("MMM-WeatherChart", {
     if (id === 801 || id === 802) return dayOrNight("wi-day-cloudy", "wi-night-alt-cloudy");
     if (id === 803 || id === 804) return "wi-cloudy";
 
-    // Fallback über Icon-Code
     const fallbackMap = {
       "01": dayOrNight("wi-day-sunny", "wi-night-clear"),
       "02": dayOrNight("wi-day-cloudy", "wi-night-alt-cloudy"),
@@ -178,7 +170,7 @@ Module.register("MMM-WeatherChart", {
     return fallbackMap[code.slice(0, 2)] || dayOrNight("wi-day-cloudy", "wi-night-alt-cloudy");
   },
 
-  // ==================== CSS-UTILITIES ====================
+  // ==================== CSS UTILITIES ====================
   getCssVariable(variableName, fallbackValue) {
     const rootStyles = getComputedStyle(document.documentElement);
     return rootStyles.getPropertyValue(variableName).trim() || fallbackValue;
@@ -196,7 +188,7 @@ Module.register("MMM-WeatherChart", {
     return Number.isFinite(fontSize) ? fontSize : parseFloat(fallbackValue);
   },
 
-  // ==================== SOCKET-KOMMUNIKATION ====================
+  // ==================== SOCKET ====================
   socketNotificationReceived(notification, payload) {
     if (notification === "WEATHER_DATA") {
       this.weatherData = payload;
@@ -208,13 +200,12 @@ Module.register("MMM-WeatherChart", {
     }
   },
 
-  // ==================== KONFIGURATIONS-HILFEN ====================
+  // ==================== HELPERS ====================
   isCardEnabled(cardName) {
-    // Explizit prüfen, ob die Eigenschaft existiert und nicht `false` ist
     return this.config.display?.[cardName] !== false;
   },
 
-  // ==================== CHART-FUNKTIONEN ====================
+  // ==================== CHARTS ====================
   destroyChart(forecastMode) {
     const chart = this.charts?.[forecastMode];
     if (chart) {
@@ -252,28 +243,24 @@ Module.register("MMM-WeatherChart", {
   },
 
   createChart(canvas, forecastMode) {
-    // Fehlerbehandlung: Daten prüfen
     if (!this.weatherData?.current || !Array.isArray(this.weatherData.daily) || !Array.isArray(this.weatherData.hourly)) {
-      console.error("MMM-WeatherChart: Ungültige Wetterdaten für Chart-Erstellung");
+      console.error("MMM-WeatherChart: Invalid weather data for chart creation");
       return;
     }
 
     if (!this.charts) this.charts = {};
     this.destroyChart(forecastMode);
 
-    // Prüfe, ob Chart.js geladen ist
     if (typeof Chart === "undefined" || typeof ChartDataLabels === "undefined") {
-      console.error("MMM-WeatherChart: Chart.js oder ChartDataLabels wurde nicht geladen.");
+      console.error("MMM-WeatherChart: Chart.js or ChartDataLabels not loaded");
       return;
     }
 
-    // Registriere DataLabels-Plugin (nur einmal)
     if (!this.chartDataLabelsRegistered) {
       Chart.register(ChartDataLabels);
       this.chartDataLabelsRegistered = true;
     }
 
-    // Chart-Thema aus CSS-Variablen
     const chartTheme = {
       colorText: this.getCssVariable("--color-text", "#999"),
       colorTextDimmed: this.getCssVariable("--color-text-dimmed", "#666"),
@@ -284,26 +271,21 @@ Module.register("MMM-WeatherChart", {
       fontSizeSmall: this.getCssFontSize("--font-size-small", "1rem")
     };
 
-    // Konfiguration für Vorhersage
     const useHourlyForecast = forecastMode === "hourly";
     const requestedDays = Number(this.config.daily?.days) || 6;
     const hourlyInterval = Math.max(1, Number(this.config.hourly?.intervalHours) || 3);
     const hourlyPoints = Math.max(1, Number(this.config.hourly?.points) || 8);
 
-    // Vorbereite Vorhersagedaten
     let forecastData;
     if (useHourlyForecast) {
-      // Für stündliche Vorhersage: Wähle jeden n-ten Eintrag (hourlyInterval) aus,
-      // beginnend ab Index 1 (nächste Stunde), um die angezeigten Zeitpunkte zu erhalten
       forecastData = this.weatherData.hourly
-        .slice(1)  // Starte ab der nächsten Stunde (Index 1 = erste Vorhersagestunde)
+        .slice(1)
         .filter((_, index) => index % hourlyInterval === 0)
         .slice(0, hourlyPoints);
     } else {
       forecastData = this.weatherData.daily.slice(0, Math.min(requestedDays, 8));
     }
 
-    // Extrahiere Daten für Chart
     const labels = forecastData.map((entry) => {
       const date = new Date(entry.dt * 1000);
       return useHourlyForecast
@@ -319,11 +301,6 @@ Module.register("MMM-WeatherChart", {
     );
     const precipitation = useHourlyForecast
       ? forecastData.map((_, k) => {
-          // Für stündliche Vorhersage mit Intervallen: Summiere Niederschlag über das gesamte Intervall
-          // forecastData wurde aus this.weatherData.hourly.slice(1) gefiltert (jeder hourlyInterval-te Eintrag)
-          // k ist der Index in forecastData. Der zugehörige Index in this.weatherData.hourly ist:
-          // originalIndex = 1 + k * hourlyInterval
-          // Für die Summierung brauchen wir die Stunden von originalIndex bis originalIndex + hourlyInterval - 1
           const originalIndex = 1 + k * hourlyInterval;
           const startIndex = originalIndex;
           const endIndex = Math.min(originalIndex + hourlyInterval - 1, this.weatherData.hourly.length - 1);
@@ -338,22 +315,20 @@ Module.register("MMM-WeatherChart", {
           return Number(sum.toFixed(1));
         })
       : forecastData.map(entry => Number((Number(entry.rain || 0) + Number(entry.snow || 0)).toFixed(1)));
+
     const weatherIcons = forecastData.map(entry => entry.weather?.[0]?.icon || null);
     const weatherIds = forecastData.map(entry => Number(entry.weather?.[0]?.id) || null);
     const windSpeeds = forecastData.map(entry => Number(entry.wind_speed) || null);
     const windDirections = forecastData.map(entry => Number(entry.wind_deg) || null);
 
-    // Berechne Achsenbereiche
     const allTemperatures = [...temperatures, ...minimumTemperatures.filter(t => t !== null)];
     const temperatureAxisMin = Math.min(...allTemperatures) - 4;
     const temperatureAxisMax = Math.max(...allTemperatures) + 4;
     const precipitationAxisMax = Math.max(5, Math.ceil(Math.max(...precipitation) * 5));
 
-    // Einheiten
     const temperatureUnit = this.getTemperatureUnit();
     const windSpeedUnit = this.getWindSpeedUnitLabel();
 
-    // Plugins
     const horizontalGridPlugin = this.createHorizontalGridPlugin();
     const weatherIconPlugin = MMMWeatherChartIconPlugin.create({
       moduleInstance: this,
@@ -367,7 +342,6 @@ Module.register("MMM-WeatherChart", {
       chartTheme
     });
 
-    // Chart erstellen
     this.charts[forecastMode] = new Chart(canvas.getContext("2d"), {
       type: "line",
       plugins: [weatherIconPlugin, horizontalGridPlugin],
@@ -537,17 +511,15 @@ Module.register("MMM-WeatherChart", {
     });
   },
 
-  // ==================== DOM-ERSTELLUNG ====================
+  // ==================== DOM CREATION ====================
   createCurrentWeatherCard() {
     const currentWeatherUtils = MMMWeatherChartCurrentWeatherUtils;
     const current = this.weatherData.current;
     const weather = current.weather?.[0] || {};
 
-    // Hauptcontainer
     const card = document.createElement("div");
     card.className = "weather-current-container";
 
-    // Titel und Aktualisierungsinfo
     const title = document.createElement("div");
     title.className = "weather-current-title";
     title.textContent = "Aktuelles Wetter";
@@ -556,11 +528,12 @@ Module.register("MMM-WeatherChart", {
     const updateInfo = this.createUpdateInfo();
     card.appendChild(updateInfo);
 
-    // Primärer Wetterbereich (links)
     const primary = document.createElement("div");
     primary.className = "weather-current-primary";
 
-    // Wettersymbol und Beschreibung
+    const symbolTempRow = document.createElement("div");
+    symbolTempRow.className = "weather-current-symbol-temp-row";
+
     const weatherIconCode = weather.icon || "01d";
     const weatherId = Number(weather.id);
     const weatherIconClass = this.getWeatherIconClass({ iconCode: weatherIconCode, weatherId });
@@ -570,33 +543,47 @@ Module.register("MMM-WeatherChart", {
     weatherIcon.setAttribute("aria-hidden", "true");
     weatherIcon.setAttribute("title", weather.description || "Aktuelles Wetter");
 
+    const temperature = document.createElement("div");
+    temperature.className = "weather-current-temperature";
+    const tempValue = currentWeatherUtils.formatTemperature(current.temp, this.getTemperatureUnit());
+    temperature.textContent = tempValue.replace(/°[CF]/, '°');
+
+    symbolTempRow.appendChild(weatherIcon);
+    symbolTempRow.appendChild(temperature);
+
     const weatherDescription = document.createElement("div");
     weatherDescription.className = "weather-current-description";
     weatherDescription.textContent = weather.description || "–";
 
-    // Temperatur
-    const temperatureBlock = document.createElement("div");
-    temperatureBlock.className = "weather-current-temperature-block";
-
-    const temperature = document.createElement("div");
-    temperature.className = "weather-current-temperature";
-    temperature.textContent = currentWeatherUtils.formatTemperature(
-      current.temp,
-      this.getTemperatureUnit()
-    );
-
-    temperatureBlock.appendChild(temperature);
-
-    // Füge Elemente zum primären Bereich hinzu
-    primary.appendChild(weatherIcon);
+    primary.appendChild(symbolTempRow);
     primary.appendChild(weatherDescription);
-    primary.appendChild(temperatureBlock);
 
-    // Details-Bereich (rechts)
+    const feelsLikeContainer = document.createElement("div");
+    feelsLikeContainer.className = "weather-current-feels-like";
+
+    const feelsLikeIcon = document.createElement("i");
+    feelsLikeIcon.className = "fa-solid fa-thermometer-half weather-current-feels-like-icon";
+    feelsLikeIcon.setAttribute("aria-hidden", "true");
+    feelsLikeIcon.style.color = this.getTemperatureColor(current.feels_like);
+
+    const feelsLikeLabel = document.createElement("span");
+    feelsLikeLabel.className = "weather-current-feels-like-label";
+    feelsLikeLabel.textContent = "Gefühlt:";
+
+    const feelsLikeValue = document.createElement("span");
+    feelsLikeValue.className = "weather-current-feels-like-value";
+    const feelsLikeTemp = currentWeatherUtils.formatTemperature(current.feels_like, this.getTemperatureUnit());
+    feelsLikeValue.textContent = feelsLikeTemp.replace(/°[CF]/, '°');
+
+    feelsLikeContainer.appendChild(feelsLikeIcon);
+    feelsLikeContainer.appendChild(feelsLikeLabel);
+    feelsLikeContainer.appendChild(feelsLikeValue);
+
+    primary.appendChild(feelsLikeContainer);
+
     const details = document.createElement("div");
     details.className = "weather-current-details";
 
-    // Hilfsfunktion zum Erstellen von Detail-Elementen
     const createDetail = (label, value, icon) => {
       const detail = document.createElement("div");
       detail.className = "weather-current-detail";
@@ -616,7 +603,7 @@ Module.register("MMM-WeatherChart", {
       valueElement.textContent = value;
 
       const labelElement = document.createElement("div");
-      labelElement.className = "weather-current-detail-label dimmed";
+      labelElement.className = "weather-current-detail-label";
       labelElement.textContent = label;
 
       const textBlock = document.createElement("div");
@@ -630,7 +617,6 @@ Module.register("MMM-WeatherChart", {
       return detail;
     };
 
-    // Wind-Richtungsicon
     const hasWindDirection = Number.isFinite(Number(current.wind_deg));
     const windIcon = document.createElement("span");
     windIcon.className = "weather-current-wind-icon";
@@ -645,18 +631,14 @@ Module.register("MMM-WeatherChart", {
       windIcon.style.transform = `rotate(${Number(current.wind_deg) + 180}deg)`;
     }
 
-    // Füge Details hinzu
-    // Luftfeuchtigkeit mit Taupunkt-Beschriftung
     const humidityValue = `${Number(current.humidity) || 0} %`;
     const dewPoint = Number(current.dew_point || 0);
     const dewPointLabel = this.config.units === "imperial"
       ? `Taupunkt: ${Math.round(dewPoint * 9/5 + 32)}°F`
       : `Taupunkt: ${Math.round(dewPoint)}°C`;
     details.appendChild(createDetail(dewPointLabel, humidityValue, "fa-solid fa-droplet"));
-    
     details.appendChild(createDetail("Luftdruck", `${Number(current.pressure) || 0} hPa`, "fa-solid fa-gauge-high"));
 
-    // Wind mit Böen-Beschriftung
     const displayWindSpeed = this.convertWindSpeed(current.wind_speed);
     const windSpeedText = Number.isFinite(displayWindSpeed)
       ? `${Math.round(displayWindSpeed)} ${this.getWindSpeedUnitLabel()}`
@@ -668,12 +650,11 @@ Module.register("MMM-WeatherChart", {
     details.appendChild(createDetail(windGustLabel, windSpeedText, windIcon));
 
     const uvi = Math.round(Number(current.uvi || 0));
-    const uviLabel = uvi <= 2 ? "niedrig" :
-                     uvi <= 5 ? "mäßig" :
-                     uvi <= 7 ? "hoch" :
-                     uvi <= 10 ? "sehr hoch" : "extrem";
+    const uviLabel = uvi <= 2 ? "niedrig"
+      : uvi <= 5 ? "mäßig"
+      : uvi <= 7 ? "hoch"
+      : uvi <= 10 ? "sehr hoch" : "extrem";
 
-    // UV-Index mit separater Bewertung (kleinere Schrift)
     const uviDetail = document.createElement("div");
     uviDetail.className = "weather-current-detail";
 
@@ -686,7 +667,7 @@ Module.register("MMM-WeatherChart", {
     uviValueElement.innerHTML = `${uvi} <span class="xsmall">(${uviLabel})</span>`;
 
     const uviLabelElement = document.createElement("div");
-    uviLabelElement.className = "weather-current-detail-label dimmed";
+    uviLabelElement.className = "weather-current-detail-label";
     uviLabelElement.textContent = "UV-Index";
 
     const uviTextBlock = document.createElement("div");
@@ -698,7 +679,6 @@ Module.register("MMM-WeatherChart", {
     uviDetail.appendChild(uviTextBlock);
     details.appendChild(uviDetail);
 
-    // Sonnenzeiten
     const sunTimes = document.createElement("div");
     sunTimes.className = "weather-current-sun-times";
 
@@ -714,9 +694,7 @@ Module.register("MMM-WeatherChart", {
       icon.setAttribute("aria-hidden", "true");
 
       value.appendChild(icon);
-      value.appendChild(
-        document.createTextNode(` ${currentWeatherUtils.formatTime(timestamp, this.config.locale)}`)
-      );
+      value.appendChild(document.createTextNode(` ${currentWeatherUtils.formatTime(timestamp, this.config.locale)}`));
 
       sunTime.appendChild(value);
       return sunTime;
@@ -725,10 +703,8 @@ Module.register("MMM-WeatherChart", {
     sunTimes.appendChild(createSunTime("fa-sun", current.sunrise));
     sunTimes.appendChild(createSunTime("fa-moon", current.sunset));
 
-    // Windskala
     const windScale = this.createWindScale();
 
-    // Füge alle Teile zur Karte hinzu
     card.appendChild(primary);
     card.appendChild(details);
     card.appendChild(sunTimes);
@@ -773,7 +749,6 @@ Module.register("MMM-WeatherChart", {
     container.appendChild(titleElement);
     container.appendChild(canvas);
 
-    // Verzögere die Chart-Erstellung, um sicherzustellen, dass das Canvas im DOM ist
     window.setTimeout(() => this.createChart(canvas, forecastMode), 0);
 
     return container;
@@ -788,13 +763,16 @@ Module.register("MMM-WeatherChart", {
     const timeElement = document.createElement("div");
     timeElement.className = "weather-datetime-time";
 
-    // Speichere Referenzen für spätere Aktualisierungen
     this.dateTimeDateElement = dateElement;
     this.dateTimeTimeElement = timeElement;
     this.updateCurrentDateTime();
 
-    container.appendChild(dateElement);
-    container.appendChild(timeElement);
+    const row = document.createElement("div");
+    row.className = "weather-datetime-row";
+    row.appendChild(dateElement);
+    row.appendChild(timeElement);
+
+    container.appendChild(row);
 
     return container;
   },
@@ -803,37 +781,30 @@ Module.register("MMM-WeatherChart", {
     const wrapper = document.createElement("div");
     wrapper.className = "weather-chart-wrapper";
 
-    // Fehlerfall
     if (this.errorMessage && !this.weatherData) {
       wrapper.innerHTML = `<div class="weather-chart-error bright small">${this.errorMessage}</div>`;
       return wrapper;
     }
 
-    // Ladezustand
     if (!this.weatherData?.current || !Array.isArray(this.weatherData.daily) || !Array.isArray(this.weatherData.hourly)) {
       wrapper.innerHTML = '<div class="weather-chart-loading dimmed small">Wetterdaten werden geladen …</div>';
       return wrapper;
     }
 
-    // Prüfe, welche Karten aktiviert sind
     const showCurrentWeather = this.isCardEnabled("currentWeather");
     const showDailyForecast = this.isCardEnabled("dailyForecast");
     const showHourlyForecast = this.isCardEnabled("hourlyForecast");
 
-    // Keine Karten aktiviert
     if (!showCurrentWeather && !showDailyForecast && !showHourlyForecast) {
       wrapper.innerHTML = '<div class="weather-chart-loading dimmed small">Keine Wetterkarten aktiviert.</div>';
       return wrapper;
     }
 
-    // Zerstöre nicht benötigte Charts
     if (!showDailyForecast) this.destroyChart("daily");
     if (!showHourlyForecast) this.destroyChart("hourly");
 
-    // Prüfe, ob Datum/Uhrzeit-Karte aktiviert ist
     const showDateTime = this.isCardEnabled("dateTime");
 
-    // Erstelle aktivierte Karten
     if (showDateTime) wrapper.appendChild(this.createDateTimeCard());
     if (showCurrentWeather) wrapper.appendChild(this.createCurrentWeatherCard());
     if (showHourlyForecast) wrapper.appendChild(this.createForecastCard("Stündliche Vorhersage", "hourly"));
@@ -842,7 +813,7 @@ Module.register("MMM-WeatherChart", {
     return wrapper;
   },
 
-  // ==================== TEMPERATUR-FUNKTIONEN ====================
+  // ==================== TEMPERATURE ====================
   getTemperatureColor(temperature) {
     return MMMWeatherChartTemperatureUtils.getTemperatureColor(temperature, this.config.units);
   },
@@ -851,7 +822,7 @@ Module.register("MMM-WeatherChart", {
     return MMMWeatherChartTemperatureUtils.getTemperatureUnit(this.config.units);
   },
 
-  // ==================== WIND-FUNKTIONEN ====================
+  // ==================== WIND ====================
   getWindSpeedUnit() {
     const configuredUnit = this.config.windSpeedUnit;
     const validUnits = ["m/s", "km/h", "mph", "bft"];
@@ -876,7 +847,7 @@ Module.register("MMM-WeatherChart", {
       const beaufortValue = beaufortUpperLimits.findIndex(upperLimit => value <= upperLimit);
       return beaufortValue === -1 ? 12 : beaufortValue;
     }
-    return value; // Standardmäßig m/s
+    return value;
   },
 
   getWindColor(speed) {
@@ -885,13 +856,13 @@ Module.register("MMM-WeatherChart", {
 
     const speedKmh = Math.max(0, windSpeedMs * 3.6);
     const colorStops = [
-      { speed: 0, color: [255, 255, 255] },   // Weiß
-      { speed: 20, color: [70, 150, 255] },   // Blau
-      { speed: 40, color: [80, 200, 120] },   // Grün
-      { speed: 60, color: [255, 220, 60] },   // Gelb
-      { speed: 75, color: [255, 150, 40] },   // Orange
-      { speed: 90, color: [235, 60, 50] },    // Rot
-      { speed: 100, color: [180, 70, 220] }   // Violett
+      { speed: 0, color: [255, 255, 255] },
+      { speed: 20, color: [70, 150, 255] },
+      { speed: 40, color: [80, 200, 120] },
+      { speed: 60, color: [255, 220, 60] },
+      { speed: 75, color: [255, 150, 40] },
+      { speed: 90, color: [235, 60, 50] },
+      { speed: 100, color: [180, 70, 220] }
     ];
 
     if (speedKmh >= 100) return "rgb(180, 70, 220)";
@@ -952,7 +923,7 @@ Module.register("MMM-WeatherChart", {
     return scale;
   },
 
-  // ==================== WIND-UTILITIES ====================
+  // ==================== WIND UTILITIES ====================
   getWindDirection(degrees) {
     return MMMWeatherChartWindUtils.getWindDirection(degrees);
   },
