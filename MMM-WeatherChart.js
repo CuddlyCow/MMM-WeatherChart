@@ -50,8 +50,8 @@ Module.register("MMM-WeatherChart", {
     this.errorMessage = null;
     this.charts = {};
     this.chartDataLabelsRegistered = false;
-    this.currentDateTimeDateElement = null;
-    this.currentDateTimeTimeElement = null;
+    this.dateTimeDateElement = null;
+    this.dateTimeTimeElement = null;
 
     // Initialisiere Date/Time-Formatter (nur einmal erstellen)
     this.dateFormatter = new Intl.DateTimeFormat(this.config.locale || "de-DE", {
@@ -134,11 +134,11 @@ Module.register("MMM-WeatherChart", {
   },
 
   updateCurrentDateTime() {
-    if (!this.currentDateTimeDateElement || !this.currentDateTimeTimeElement) return;
+    if (!this.dateTimeDateElement || !this.dateTimeTimeElement) return;
 
     const { date, time } = this.formatCurrentDateTime();
-    this.currentDateTimeDateElement.textContent = date;
-    this.currentDateTimeTimeElement.textContent = time;
+    this.dateTimeDateElement.textContent = date;
+    this.dateTimeTimeElement.textContent = time;
   },
 
   // ==================== WETTER-ICONS ====================
@@ -559,25 +559,6 @@ Module.register("MMM-WeatherChart", {
     const primary = document.createElement("div");
     primary.className = "weather-current-primary";
 
-    // Datum und Uhrzeit
-    const dateTime = document.createElement("div");
-    dateTime.className = "weather-current-date-time";
-
-    const dateElement = document.createElement("div");
-    dateElement.className = "weather-current-date";
-    const timeElement = document.createElement("div");
-    timeElement.className = "weather-current-time";
-
-    dateTime.appendChild(dateElement);
-    dateTime.appendChild(timeElement);
-
-    // Speichere Referenzen für spätere Aktualisierungen
-    this.currentDateTimeDateElement = dateElement;
-    this.currentDateTimeTimeElement = timeElement;
-    this.updateCurrentDateTime();
-
-    primary.appendChild(dateTime);
-
     // Wettersymbol und Beschreibung
     const weatherIconCode = weather.icon || "01d";
     const weatherId = Number(weather.id);
@@ -797,6 +778,26 @@ Module.register("MMM-WeatherChart", {
     return container;
   },
 
+  createDateTimeCard() {
+    const container = document.createElement("div");
+    container.className = "weather-datetime-container";
+
+    const dateElement = document.createElement("div");
+    dateElement.className = "weather-datetime-date";
+    const timeElement = document.createElement("div");
+    timeElement.className = "weather-datetime-time";
+
+    // Speichere Referenzen für spätere Aktualisierungen
+    this.dateTimeDateElement = dateElement;
+    this.dateTimeTimeElement = timeElement;
+    this.updateCurrentDateTime();
+
+    container.appendChild(dateElement);
+    container.appendChild(timeElement);
+
+    return container;
+  },
+
   getDom() {
     const wrapper = document.createElement("div");
     wrapper.className = "weather-chart-wrapper";
@@ -827,6 +828,9 @@ Module.register("MMM-WeatherChart", {
     // Zerstöre nicht benötigte Charts
     if (!showDailyForecast) this.destroyChart("daily");
     if (!showHourlyForecast) this.destroyChart("hourly");
+
+    // Erstelle Datum/Uhrzeit-Karte ganz oben
+    wrapper.appendChild(this.createDateTimeCard());
 
     // Erstelle aktivierte Karten
     if (showCurrentWeather) wrapper.appendChild(this.createCurrentWeatherCard());
