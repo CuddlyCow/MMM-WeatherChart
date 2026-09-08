@@ -70,6 +70,8 @@ Module.register("MMM-WeatherChart", {
       this.updateCurrentDateTime();
     }, 1000);
 
+    MMMWeatherChartIconPlugin.preloadWeatherFont();
+
     this.sendSocketNotification("WEATHER_CONFIG", {
       lat: this.config.lat,
       lon: this.config.lon,
@@ -104,6 +106,7 @@ Module.register("MMM-WeatherChart", {
     return [
       this.file("node_modules/chart.js/dist/chart.umd.js"),
       this.file("node_modules/chartjs-plugin-datalabels/dist/chartjs-plugin-datalabels.js"),
+      this.file("js/color-utils.js"),
       this.file("js/temperature-utils.js"),
       this.file("js/wind-utils.js"),
       this.file("js/current-weather-utils.js"),
@@ -202,7 +205,6 @@ Module.register("MMM-WeatherChart", {
 
   // ==================== DOM CREATION ====================
   createCurrentWeatherCard() {
-    const currentWeatherUtils = MMMWeatherChartCurrentWeatherUtils;
     const current = this.weatherData.current;
     const weather = current.weather?.[0] || {};
 
@@ -214,8 +216,17 @@ Module.register("MMM-WeatherChart", {
     title.textContent = "Aktuelles Wetter";
     card.appendChild(title);
 
-    const updateInfo = this.createUpdateInfo();
-    card.appendChild(updateInfo);
+    card.appendChild(this.createUpdateInfo());
+    card.appendChild(this.createCurrentWeatherPrimary(current, weather));
+    card.appendChild(this.createCurrentWeatherDetails(current));
+    card.appendChild(this.createCurrentWeatherSunTimes(current));
+    card.appendChild(this.createWindScale());
+
+    return card;
+  },
+
+  createCurrentWeatherPrimary(current, weather) {
+    const currentWeatherUtils = MMMWeatherChartCurrentWeatherUtils;
 
     const primary = document.createElement("div");
     primary.className = "weather-current-primary";
@@ -234,8 +245,7 @@ Module.register("MMM-WeatherChart", {
 
     const temperature = document.createElement("div");
     temperature.className = "weather-current-temperature";
-    const tempValue = currentWeatherUtils.formatTemperature(current.temp, this.getTemperatureUnit());
-    temperature.textContent = tempValue.replace(/°[CF]/, '°');
+    temperature.textContent = currentWeatherUtils.formatTemperatureShort(current.temp);
 
     symbolTempRow.appendChild(weatherIcon);
     symbolTempRow.appendChild(temperature);
@@ -246,6 +256,13 @@ Module.register("MMM-WeatherChart", {
 
     primary.appendChild(symbolTempRow);
     primary.appendChild(weatherDescription);
+    primary.appendChild(this.createFeelsLikeIndicator(current));
+
+    return primary;
+  },
+
+  createFeelsLikeIndicator(current) {
+    const currentWeatherUtils = MMMWeatherChartCurrentWeatherUtils;
 
     const feelsLikeContainer = document.createElement("div");
     feelsLikeContainer.className = "weather-current-feels-like";
@@ -261,51 +278,49 @@ Module.register("MMM-WeatherChart", {
 
     const feelsLikeValue = document.createElement("span");
     feelsLikeValue.className = "weather-current-feels-like-value";
-    const feelsLikeTemp = currentWeatherUtils.formatTemperature(current.feels_like, this.getTemperatureUnit());
-    feelsLikeValue.textContent = feelsLikeTemp.replace(/°[CF]/, '°');
+    feelsLikeValue.textContent = currentWeatherUtils.formatTemperatureShort(current.feels_like);
 
     feelsLikeContainer.appendChild(feelsLikeIcon);
     feelsLikeContainer.appendChild(feelsLikeLabel);
     feelsLikeContainer.appendChild(feelsLikeValue);
 
-    primary.appendChild(feelsLikeContainer);
+    return feelsLikeContainer;
+  },
 
-    const details = document.createElement("div");
-    details.className = "weather-current-details";
+  createCurrentWeatherDetail(label, value, icon) {
+    const detail = document.createElement("div");
+    detail.className = "weather-current-detail";
 
-    const createDetail = (label, value, icon) => {
-      const detail = document.createElement("div");
-      detail.className = "weather-current-detail";
+    let iconElement;
+    if (typeof icon === "string") {
+      iconElement = document.createElement("i");
+      iconElement.className = `weather-current-detail-icon ${icon}`;
+      iconElement.setAttribute("aria-hidden", "true");
+    } else {
+      iconElement = icon;
+      iconElement.classList.add("weather-current-detail-icon");
+    }
 
-      let iconElement;
-      if (typeof icon === "string") {
-        iconElement = document.createElement("i");
-        iconElement.className = `weather-current-detail-icon ${icon}`;
-        iconElement.setAttribute("aria-hidden", "true");
-      } else {
-        iconElement = icon;
-        iconElement.classList.add("weather-current-detail-icon");
-      }
+    const valueElement = document.createElement("div");
+    valueElement.className = "weather-current-detail-value";
+    valueElement.textContent = value;
 
-      const valueElement = document.createElement("div");
-      valueElement.className = "weather-current-detail-value";
-      valueElement.textContent = value;
+    const labelElement = document.createElement("div");
+    labelElement.className = "weather-current-detail-label";
+    labelElement.textContent = label;
 
-      const labelElement = document.createElement("div");
-      labelElement.className = "weather-current-detail-label";
-      labelElement.textContent = label;
+    const textBlock = document.createElement("div");
+    textBlock.className = "weather-current-detail-text";
+    textBlock.appendChild(valueElement);
+    textBlock.appendChild(labelElement);
 
-      const textBlock = document.createElement("div");
-      textBlock.className = "weather-current-detail-text";
-      textBlock.appendChild(valueElement);
-      textBlock.appendChild(labelElement);
+    detail.appendChild(iconElement);
+    detail.appendChild(textBlock);
 
-      detail.appendChild(iconElement);
-      detail.appendChild(textBlock);
+    return detail;
+  },
 
-      return detail;
-    };
-
+  createWindDetailIcon(current) {
     const hasWindDirection = Number.isFinite(Number(current.wind_deg));
     const windIcon = document.createElement("span");
     windIcon.className = "weather-current-wind-icon";
@@ -320,24 +335,10 @@ Module.register("MMM-WeatherChart", {
       windIcon.style.transform = `rotate(${Number(current.wind_deg) + 180}deg)`;
     }
 
-    const humidityValue = `${Number(current.humidity) || 0} %`;
-    const dewPoint = Number(current.dew_point || 0);
-    const dewPointLabel = this.config.units === "imperial"
-      ? `Taupunkt: ${Math.round(dewPoint * 9/5 + 32)}°F`
-      : `Taupunkt: ${Math.round(dewPoint)}°C`;
-    details.appendChild(createDetail(dewPointLabel, humidityValue, "fa-solid fa-droplet"));
-    details.appendChild(createDetail("Luftdruck", `${Number(current.pressure) || 0} hPa`, "fa-solid fa-gauge-high"));
+    return windIcon;
+  },
 
-    const displayWindSpeed = this.convertWindSpeed(current.wind_speed);
-    const windSpeedText = Number.isFinite(displayWindSpeed)
-      ? `${Math.round(displayWindSpeed)} ${this.getWindSpeedUnitLabel()}`
-      : "–";
-    const windGust = this.convertWindSpeed(current.wind_gust);
-    const windGustLabel = Number.isFinite(windGust)
-      ? `Böen: ${Math.round(windGust)} ${this.getWindSpeedUnitLabel()}`
-      : "Böen: –";
-    details.appendChild(createDetail(windGustLabel, windSpeedText, windIcon));
-
+  createUviDetail(current) {
     const uvi = Math.round(Number(current.uvi || 0));
     const uviLabel = uvi <= 2 ? "niedrig"
       : uvi <= 5 ? "mäßig"
@@ -366,40 +367,65 @@ Module.register("MMM-WeatherChart", {
 
     uviDetail.appendChild(uviIcon);
     uviDetail.appendChild(uviTextBlock);
-    details.appendChild(uviDetail);
 
+    return uviDetail;
+  },
+
+  createCurrentWeatherDetails(current) {
+    const details = document.createElement("div");
+    details.className = "weather-current-details";
+
+    const humidityValue = `${Number(current.humidity) || 0} %`;
+    const dewPoint = Number(current.dew_point || 0);
+    const dewPointLabel = this.config.units === "imperial"
+      ? `Taupunkt: ${Math.round(dewPoint * 9/5 + 32)}°F`
+      : `Taupunkt: ${Math.round(dewPoint)}°C`;
+    details.appendChild(this.createCurrentWeatherDetail(dewPointLabel, humidityValue, "fa-solid fa-droplet"));
+    details.appendChild(this.createCurrentWeatherDetail("Luftdruck", `${Number(current.pressure) || 0} hPa`, "fa-solid fa-gauge-high"));
+
+    const displayWindSpeed = this.convertWindSpeed(current.wind_speed);
+    const windSpeedText = Number.isFinite(displayWindSpeed)
+      ? `${Math.round(displayWindSpeed)} ${this.getWindSpeedUnitLabel()}`
+      : "–";
+    const windGust = this.convertWindSpeed(current.wind_gust);
+    const windGustLabel = Number.isFinite(windGust)
+      ? `Böen: ${Math.round(windGust)} ${this.getWindSpeedUnitLabel()}`
+      : "Böen: –";
+    details.appendChild(this.createCurrentWeatherDetail(windGustLabel, windSpeedText, this.createWindDetailIcon(current)));
+
+    details.appendChild(this.createUviDetail(current));
+
+    return details;
+  },
+
+  createSunTimeEntry(iconClass, timestamp) {
+    const currentWeatherUtils = MMMWeatherChartCurrentWeatherUtils;
+
+    const sunTime = document.createElement("div");
+    sunTime.className = "weather-current-sun-time";
+
+    const value = document.createElement("div");
+    value.className = "weather-current-sun-value";
+
+    const icon = document.createElement("i");
+    icon.className = `fa-solid ${iconClass}`;
+    icon.setAttribute("aria-hidden", "true");
+
+    value.appendChild(icon);
+    value.appendChild(document.createTextNode(` ${currentWeatherUtils.formatTime(timestamp, this.config.locale)}`));
+
+    sunTime.appendChild(value);
+    return sunTime;
+  },
+
+  createCurrentWeatherSunTimes(current) {
     const sunTimes = document.createElement("div");
     sunTimes.className = "weather-current-sun-times";
 
-    const createSunTime = (iconClass, timestamp) => {
-      const sunTime = document.createElement("div");
-      sunTime.className = "weather-current-sun-time";
+    sunTimes.appendChild(this.createSunTimeEntry("fa-sun", current.sunrise));
+    sunTimes.appendChild(this.createSunTimeEntry("fa-moon", current.sunset));
 
-      const value = document.createElement("div");
-      value.className = "weather-current-sun-value";
-
-      const icon = document.createElement("i");
-      icon.className = `fa-solid ${iconClass}`;
-      icon.setAttribute("aria-hidden", "true");
-
-      value.appendChild(icon);
-      value.appendChild(document.createTextNode(` ${currentWeatherUtils.formatTime(timestamp, this.config.locale)}`));
-
-      sunTime.appendChild(value);
-      return sunTime;
-    };
-
-    sunTimes.appendChild(createSunTime("fa-sun", current.sunrise));
-    sunTimes.appendChild(createSunTime("fa-moon", current.sunset));
-
-    const windScale = this.createWindScale();
-
-    card.appendChild(primary);
-    card.appendChild(details);
-    card.appendChild(sunTimes);
-    card.appendChild(windScale);
-
-    return card;
+    return sunTimes;
   },
 
   createUpdateInfo() {

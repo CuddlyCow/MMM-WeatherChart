@@ -1,15 +1,15 @@
 (function (global) {
   "use strict";
 
-  // ==================== FARBSKALA FÜR WINDGESCHWINDIGKEIT ====================
+  // ==================== FARBSKALA FÜR WINDGESCHWINDIGKEIT (km/h) ====================
   const WIND_COLOR_STOPS = [
-    { speed: 0, color: [255, 255, 255] },   // Weiß
-    { speed: 20, color: [70, 150, 255] },   // Blau
-    { speed: 40, color: [80, 200, 120] },   // Grün
-    { speed: 60, color: [255, 220, 60] },   // Gelb
-    { speed: 75, color: [255, 150, 40] },   // Orange
-    { speed: 90, color: [235, 60, 50] },    // Rot
-    { speed: 100, color: [180, 70, 220] }   // Violett
+    { value: 0, color: [255, 255, 255] },   // Weiß
+    { value: 20, color: [70, 150, 255] },   // Blau
+    { value: 40, color: [80, 200, 120] },   // Grün
+    { value: 60, color: [255, 220, 60] },   // Gelb
+    { value: 75, color: [255, 150, 40] },   // Orange
+    { value: 90, color: [235, 60, 50] },    // Rot
+    { value: 100, color: [180, 70, 220] }   // Violett
   ];
 
   // ==================== WIND-UTILITIES ====================
@@ -59,24 +59,10 @@
      */
     getWindColor(speed) {
       const windSpeedMs = Number(speed);
-      if (!Number.isFinite(windSpeedMs)) return "#ffffff";
+      if (!Number.isFinite(windSpeedMs)) return "rgb(255, 255, 255)";
 
       const speedKmh = Math.max(0, windSpeedMs * 3.6);
-
-      if (speedKmh >= 100) return "rgb(180, 70, 220)";
-
-      for (let i = 0; i < WIND_COLOR_STOPS.length - 1; i++) {
-        const lower = WIND_COLOR_STOPS[i];
-        const upper = WIND_COLOR_STOPS[i + 1];
-        if (speedKmh >= lower.speed && speedKmh <= upper.speed) {
-          const progress = (speedKmh - lower.speed) / (upper.speed - lower.speed);
-          const red = Math.round(lower.color[0] + (upper.color[0] - lower.color[0]) * progress);
-          const green = Math.round(lower.color[1] + (upper.color[1] - lower.color[1]) * progress);
-          const blue = Math.round(lower.color[2] + (upper.color[2] - lower.color[2]) * progress);
-          return `rgb(${red}, ${green}, ${blue})`;
-        }
-      }
-      return "rgb(180, 70, 220)";
+      return MMMWeatherChartColorUtils.interpolateColorScale(speedKmh, WIND_COLOR_STOPS);
     },
 
     /**

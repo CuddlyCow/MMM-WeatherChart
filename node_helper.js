@@ -152,6 +152,12 @@ module.exports = NodeHelper.create({
         );
       }
 
+      if (!Number.isFinite(Number(this.config?.lat)) || !Number.isFinite(Number(this.config?.lon))) {
+        throw new Error(
+          "Keine gültigen Koordinaten (lat/lon) in der config.js angegeben."
+        );
+      }
+
       // Prüfe, ob gültiger Cache existiert
       const cachedData = this.readCache();
 

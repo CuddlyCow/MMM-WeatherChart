@@ -81,6 +81,15 @@
 
   // ==================== PLUGIN-FACTORY ====================
   const weatherIconPluginFactory = {
+    /**
+     * Lädt die Weather-Icons-Schriftart vorab, damit sie beim ersten Chart-Rendern
+     * bereits verfügbar ist und Icons nicht erst verzögert nachgezeichnet werden.
+     * @returns {Promise<boolean>} Promise, das auflöst, sobald die Schrift geladen ist (oder fehlgeschlagen ist).
+     */
+    preloadWeatherFont() {
+      return ensureWeatherFont(ICON_SIZE);
+    },
+
     create({
       moduleInstance,
       modulePath,
@@ -115,7 +124,7 @@
 
       // ==================== ZEICHNEN-FUNKTIONEN ====================
       const drawLabel = (chart, label, x, chartAreaTop, font) => {
-        if (!moduleInstance.config.display.xAxisLabels || !label) {
+        if (!moduleInstance.isCardEnabled("xAxisLabels") || !label) {
           return;
         }
 
@@ -129,7 +138,7 @@
       };
 
       const drawWeatherIcon = (chart, iconCode, weatherId, x, chartAreaTop, font) => {
-        if (!moduleInstance.config.display.weatherIcons || !iconCode) {
+        if (!moduleInstance.isCardEnabled("weatherIcons") || !iconCode) {
           return;
         }
 
@@ -193,7 +202,7 @@
       };
 
       const drawWindInfo = (chart, x, windSpeed, windDirection, chartAreaTop, font) => {
-        if (!moduleInstance.config.display.wind) {
+        if (!moduleInstance.isCardEnabled("wind")) {
           return;
         }
 

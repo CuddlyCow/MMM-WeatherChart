@@ -31,6 +31,16 @@
       return `${temperature.toFixed(1)}${unit}`;
     },
 
+    formatTemperatureShort(value) {
+      const temperature = toFiniteNumber(value);
+
+      if (temperature === null) {
+        return "–";
+      }
+
+      return `${temperature.toFixed(1)}°`;
+    },
+
     formatWindSpeed(value, unit = "m/s") {
       const windSpeed = toFiniteNumber(value);
 
