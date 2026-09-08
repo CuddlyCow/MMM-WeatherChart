@@ -1,32 +1,16 @@
 (function (global) {
   "use strict";
 
-  // ==================== KONSTANTEN ====================
-  // Himmelsrichtungen (deutsch, im Uhrzeigersinn ab Nord)
-  const DIRECTIONS = [
-    "N",  // 0°
-    "NO", // 45°
-    "O",  // 90°
-    "SO", // 135°
-    "S",  // 180°
-    "SW", // 225°
-    "W",  // 270°
-    "NW"  // 315°
+  // ==================== FARBSKALA FÜR WINDGESCHWINDIGKEIT ====================
+  const WIND_COLOR_STOPS = [
+    { speed: 0, color: [255, 255, 255] },   // Weiß
+    { speed: 20, color: [70, 150, 255] },   // Blau
+    { speed: 40, color: [80, 200, 120] },   // Grün
+    { speed: 60, color: [255, 220, 60] },   // Gelb
+    { speed: 75, color: [255, 150, 40] },   // Orange
+    { speed: 90, color: [235, 60, 50] },    // Rot
+    { speed: 100, color: [180, 70, 220] }   // Violett
   ];
-
-  // ==================== HILFSFUNKTIONEN ====================
-  /**
-   * Berechnet den Index für eine Windrichtung basierend auf Grad.
-   * @param {number} degrees - Windrichtung in Grad (0° = Nord, 90° = Ost, etc.).
-   * @returns {number|null} Index (0-7) oder null bei ungültiger Eingabe.
-   */
-  const getDirectionIndex = (degrees) => {
-    const value = Number(degrees);
-    if (!Number.isFinite(value)) return null;
-
-    const normalizedDegrees = (value + 360) % 360;
-    return Math.floor((normalizedDegrees + 22.5) / 45) % 8;
-  };
 
   // ==================== WIND-UTILITIES ====================
   const windUtils = {
@@ -40,13 +24,106 @@
     },
 
     /**
-     * Gibt die Himmelsrichtung als Text zurück (z. B. "N", "NO").
-     * @param {number} degrees - Windrichtung in Grad.
-     * @returns {string} Himmelsrichtung oder leerer String bei ungültiger Eingabe.
+     * Gibt die Einheit für die Windgeschwindigkeit zurück (für die Anzeige).
+     * @param {string} unit - Einheit ("m/s", "km/h", "mph", "bft").
+     * @returns {string} Anzeige-String (z. B. "m/s", "km/h", "Bft").
      */
-    getWindDirection(degrees) {
-      const index = getDirectionIndex(degrees);
-      return index === null ? "" : DIRECTIONS[index];
+    getWindSpeedUnitLabel(unit) {
+      return unit === "bft" ? "Bft" : unit;
+    },
+
+    /**
+     * Konvertiert Windgeschwindigkeit in die gewünschte Einheit.
+     * @param {number} speed - Windgeschwindigkeit in m/s.
+     * @param {string} targetUnit - Zieleinheit ("m/s", "km/h", "mph", "bft").
+     * @returns {number|null} Konvertierte Geschwindigkeit oder null bei ungültiger Eingabe.
+     */
+    convertWindSpeed(speed, targetUnit = "m/s") {
+      const value = Number(speed);
+      if (!Number.isFinite(value)) return null;
+
+      if (targetUnit === "km/h") return value * 3.6;
+      if (targetUnit === "mph") return value * 2.23694;
+      if (targetUnit === "bft") {
+        const beaufortUpperLimits = [0.2, 1.5, 3.3, 5.4, 7.9, 10.7, 13.8, 17.1, 20.7, 24.4, 28.4, 32.6];
+        const beaufortValue = beaufortUpperLimits.findIndex(upperLimit => value <= upperLimit);
+        return beaufortValue === -1 ? 12 : beaufortValue;
+      }
+      return value;
+    },
+
+    /**
+     * Gibt die Farbe für eine gegebene Windgeschwindigkeit zurück.
+     * @param {number} speed - Windgeschwindigkeit in m/s.
+     * @returns {string} Farbe als RGB-String.
+     */
+    getWindColor(speed) {
+      const windSpeedMs = Number(speed);
+      if (!Number.isFinite(windSpeedMs)) return "#ffffff";
+
+      const speedKmh = Math.max(0, windSpeedMs * 3.6);
+
+      if (speedKmh >= 100) return "rgb(180, 70, 220)";
+
+      for (let i = 0; i < WIND_COLOR_STOPS.length - 1; i++) {
+        const lower = WIND_COLOR_STOPS[i];
+        const upper = WIND_COLOR_STOPS[i + 1];
+        if (speedKmh >= lower.speed && speedKmh <= upper.speed) {
+          const progress = (speedKmh - lower.speed) / (upper.speed - lower.speed);
+          const red = Math.round(lower.color[0] + (upper.color[0] - lower.color[0]) * progress);
+          const green = Math.round(lower.color[1] + (upper.color[1] - lower.color[1]) * progress);
+          const blue = Math.round(lower.color[2] + (upper.color[2] - lower.color[2]) * progress);
+          return `rgb(${red}, ${green}, ${blue})`;
+        }
+      }
+      return "rgb(180, 70, 220)";
+    },
+
+    /**
+     * Erstellt eine Windskala als HTML-Element.
+     * @param {object} moduleInstance - Instanz des Moduls (für `this.file()` und Konfiguration).
+     * @returns {HTMLElement} DOM-Element der Windskala.
+     */
+    createWindScale(moduleInstance) {
+      const scale = document.createElement("div");
+      scale.className = "weather-current-wind-scale";
+      scale.setAttribute("aria-label", "Skala für Windgeschwindigkeit");
+
+      const title = document.createElement("div");
+      title.className = "weather-current-wind-scale-title";
+      title.textContent = "Windgeschwindigkeit";
+
+      const bar = document.createElement("div");
+      bar.className = "weather-current-wind-scale-bar";
+
+      const labels = document.createElement("div");
+      labels.className = "weather-current-wind-scale-labels";
+
+      const scaleKmh = [0, 10, 20, 30, 50, 80];
+      const unit = moduleInstance.getWindSpeedUnitLabel();
+
+      const formatValue = (valueKmh) => {
+        const valueMs = valueKmh / 3.6;
+        const converted = windUtils.convertWindSpeed(valueMs, moduleInstance.getWindSpeedUnit());
+        return Math.round(converted);
+      };
+
+      scaleKmh.forEach((valueKmh, index) => {
+        const label = document.createElement("span");
+        label.textContent = index === scaleKmh.length - 1 ? `${formatValue(valueKmh)}+` : formatValue(valueKmh);
+        labels.appendChild(label);
+      });
+
+      const unitLabel = document.createElement("span");
+      unitLabel.className = "weather-current-wind-scale-unit";
+      unitLabel.textContent = unit;
+      labels.appendChild(unitLabel);
+
+      scale.appendChild(title);
+      scale.appendChild(bar);
+      scale.appendChild(labels);
+
+      return scale;
     }
   };
 

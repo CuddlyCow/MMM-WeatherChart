@@ -200,31 +200,17 @@
         const speed = Number(windSpeed);
         const direction = Number(windDirection);
 
-        if (!Number.isFinite(speed) || !Number.isFinite(direction)) {
+        if (!Number.isFinite(speed)) {
           return;
         }
 
         const windConfig = moduleInstance.config.wind || {};
         const windColor = moduleInstance.getWindColor(speed);
-        const windParts = [];
 
-        // Windrichtung (z. B. "N", "NO")
-        if (windConfig.showDirection) {
-          const directionText = moduleInstance.getWindDirection(direction);
-          if (directionText) windParts.push(directionText);
-        }
-
-        // Windgeschwindigkeit (z. B. "15 km/h")
-        if (windConfig.showSpeed) {
-          const displaySpeed = moduleInstance.convertWindSpeed(speed);
-          if (Number.isFinite(displaySpeed)) {
-            windParts.push(`${Math.round(displaySpeed)} ${windSpeedUnit}`);
-          }
-        }
-
-        const windText = windParts.join(" ");
-        const hasArrow = windConfig.showArrow === true;
-        const hasText = windText.length > 0;
+        const displaySpeed = moduleInstance.convertWindSpeed(speed);
+        const hasText = windConfig.showSpeed && Number.isFinite(displaySpeed);
+        const windText = hasText ? `${Math.round(displaySpeed)} ${windSpeedUnit}` : "";
+        const hasArrow = windConfig.showArrow === true && Number.isFinite(direction);
 
         if (!hasArrow && !hasText) {
           return;
