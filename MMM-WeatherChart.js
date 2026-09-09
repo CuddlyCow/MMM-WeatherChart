@@ -25,7 +25,9 @@ Module.register("MMM-WeatherChart", {
     cacheMaxAge: 30 * 60 * 1000,
 
     locale: "de-DE",
-    lang: "de",
+    // Sprache für die OpenWeather-API (z. B. "de", "en"). Wird nicht gesetzt,
+    // leitet sich die Sprache automatisch aus "locale" ab.
+    lang: null,
     animationDuration: 700,
     windSpeedUnit: null,
 
@@ -75,9 +77,8 @@ Module.register("MMM-WeatherChart", {
     });
 
     this.timeFormatter = new Intl.DateTimeFormat(this.config.locale || "de-DE", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23"
+      hour: "numeric",
+      minute: "2-digit"
     });
 
     this.scheduleDateTimeUpdate();
@@ -88,7 +89,7 @@ Module.register("MMM-WeatherChart", {
       lat: this.config.lat,
       lon: this.config.lon,
       units: this.config.units,
-      lang: this.config.lang || "de",
+      lang: this.getApiLanguage(),
       appid: this.config.appid,
       updateInterval: this.config.updateInterval,
       cacheMaxAge: this.config.cacheMaxAge
@@ -118,6 +119,7 @@ Module.register("MMM-WeatherChart", {
     return [
       this.file("node_modules/chart.js/dist/chart.umd.js"),
       this.file("node_modules/chartjs-plugin-datalabels/dist/chartjs-plugin-datalabels.js"),
+      this.file("js/translations.js"),
       this.file("js/color-utils.js"),
       this.file("js/temperature-utils.js"),
       this.file("js/wind-utils.js"),
@@ -142,7 +144,7 @@ Module.register("MMM-WeatherChart", {
   formatCurrentDateTime(date = new Date()) {
     return {
       date: this.dateFormatter.format(date),
-      time: this.timeFormatter.format(date)
+      time: this.timeFormatter.format(date).toLowerCase()
     };
   },
 
@@ -169,6 +171,17 @@ Module.register("MMM-WeatherChart", {
     this.updateSunPosition();
   },
 
+  // ==================== ÜBERSETZUNG ====================
+  translate(key, vars) {
+    return MMMWeatherChartTranslations.translate(this.config.locale, key, vars);
+  },
+
+  // Sprache für die OpenWeather-API: explizites "lang" hat Vorrang, sonst
+  // Ableitung aus dem Sprachanteil von "locale" (z. B. "en-EN" -> "en").
+  getApiLanguage() {
+    return this.config.lang || String(this.config.locale || "de-DE").slice(0, 2).toLowerCase();
+  },
+
   // ==================== WEATHER ICONS ====================
   getWeatherIconClass(params) {
     return MMMWeatherChartWeatherIconUtils.getWeatherIconClass(params);
@@ -190,8 +203,18 @@ Module.register("MMM-WeatherChart", {
       this.errorMessage = null;
       this.updateDom(300);
     } else if (notification === "WEATHER_ERROR") {
-      this.errorMessage = payload.message;
+      this.errorMessage = this.translateError(payload);
       this.updateDom(300);
+    }
+  },
+
+  translateError({ code, status, detail } = {}) {
+    switch (code) {
+      case "MISSING_API_KEY": return this.translate("errorMissingApiKey");
+      case "INVALID_COORDINATES": return this.translate("errorInvalidCoordinates");
+      case "HTTP_ERROR": return this.translate("errorHttp", { status });
+      case "INCOMPLETE_DATA": return this.translate("errorIncompleteData");
+      default: return this.translate("errorGeneric", { reason: detail || "" });
     }
   },
 
@@ -241,7 +264,7 @@ Module.register("MMM-WeatherChart", {
 
     const title = document.createElement("div");
     title.className = "weather-current-title";
-    title.textContent = "Aktuelles Wetter";
+    title.textContent = this.translate("currentWeatherTitle");
     card.appendChild(title);
 
     card.appendChild(this.createUpdateInfo());
@@ -269,7 +292,7 @@ Module.register("MMM-WeatherChart", {
     const weatherIcon = document.createElement("i");
     weatherIcon.className = `weather-current-icon wi ${weatherIconClass}`;
     weatherIcon.setAttribute("aria-hidden", "true");
-    weatherIcon.setAttribute("title", weather.description || "Aktuelles Wetter");
+    weatherIcon.setAttribute("title", weather.description || this.translate("currentWeatherTitle"));
 
     const temperature = document.createElement("div");
     temperature.className = "weather-current-temperature";
@@ -304,7 +327,7 @@ Module.register("MMM-WeatherChart", {
 
     const feelsLikeLabel = document.createElement("span");
     feelsLikeLabel.className = "weather-current-feels-like-label";
-    feelsLikeLabel.textContent = "Gefühlt:";
+    feelsLikeLabel.textContent = this.translate("feelsLike");
 
     const feelsLikeValue = document.createElement("span");
     feelsLikeValue.className = "weather-current-feels-like-value";
@@ -370,10 +393,10 @@ Module.register("MMM-WeatherChart", {
 
   createUviDetail(current) {
     const uvi = Math.round(Number(current.uvi || 0));
-    const uviLabel = uvi <= 2 ? "niedrig"
-      : uvi <= 5 ? "mäßig"
-      : uvi <= 7 ? "hoch"
-      : uvi <= 10 ? "sehr hoch" : "extrem";
+    const uviLabel = uvi <= 2 ? this.translate("uviLow")
+      : uvi <= 5 ? this.translate("uviModerate")
+      : uvi <= 7 ? this.translate("uviHigh")
+      : uvi <= 10 ? this.translate("uviVeryHigh") : this.translate("uviExtreme");
 
     const uviDetail = document.createElement("div");
     uviDetail.className = "weather-current-detail";
@@ -388,7 +411,7 @@ Module.register("MMM-WeatherChart", {
 
     const uviLabelElement = document.createElement("div");
     uviLabelElement.className = "weather-current-detail-label";
-    uviLabelElement.textContent = "UV-Index";
+    uviLabelElement.textContent = this.translate("uvIndex");
 
     const uviTextBlock = document.createElement("div");
     uviTextBlock.className = "weather-current-detail-text";
@@ -407,11 +430,12 @@ Module.register("MMM-WeatherChart", {
 
     const humidityValue = `${Number(current.humidity) || 0} %`;
     const dewPoint = Number(current.dew_point || 0);
-    const dewPointLabel = this.config.units === "imperial"
-      ? `Taupunkt: ${Math.round(dewPoint * 9/5 + 32)}°F`
-      : `Taupunkt: ${Math.round(dewPoint)}°C`;
+    const dewPointValue = this.config.units === "imperial"
+      ? `${Math.round(dewPoint * 9/5 + 32)}°F`
+      : `${Math.round(dewPoint)}°C`;
+    const dewPointLabel = this.translate("dewPoint", { value: dewPointValue });
     details.appendChild(this.createCurrentWeatherDetail(dewPointLabel, humidityValue, "fa-solid fa-droplet"));
-    details.appendChild(this.createCurrentWeatherDetail("Luftdruck", `${Number(current.pressure) || 0} hPa`, "fa-solid fa-gauge-high"));
+    details.appendChild(this.createCurrentWeatherDetail(this.translate("pressure"), `${Number(current.pressure) || 0} hPa`, "fa-solid fa-gauge-high"));
 
     const displayWindSpeed = this.convertWindSpeed(current.wind_speed);
     const windSpeedText = Number.isFinite(displayWindSpeed)
@@ -419,8 +443,8 @@ Module.register("MMM-WeatherChart", {
       : "–";
     const windGust = this.convertWindSpeed(current.wind_gust);
     const windGustLabel = Number.isFinite(windGust)
-      ? `Böen: ${Math.round(windGust)} ${this.getWindSpeedUnitLabel()}`
-      : "Böen: –";
+      ? this.translate("gust", { value: `${Math.round(windGust)} ${this.getWindSpeedUnitLabel()}` })
+      : this.translate("gustUnknown");
     details.appendChild(this.createCurrentWeatherDetail(windGustLabel, windSpeedText, this.createWindDetailIcon(current)));
 
     details.appendChild(this.createUviDetail(current));
@@ -534,10 +558,10 @@ Module.register("MMM-WeatherChart", {
     const updateText = document.createElement("span");
     const cachedAt = this.weatherData.cachedAt ? new Date(this.weatherData.cachedAt) : null;
     const updateTime = cachedAt
-      ? cachedAt.toLocaleTimeString(this.config.locale, { hour: "2-digit", minute: "2-digit" })
+      ? cachedAt.toLocaleTimeString(this.config.locale, { hour: "numeric", minute: "2-digit" }).toLowerCase()
       : "–";
 
-    updateText.textContent = `Aktualisiert: ${updateTime}`;
+    updateText.textContent = this.translate("updated", { time: updateTime });
 
     updateInfo.appendChild(updateIcon);
     updateInfo.appendChild(updateText);
@@ -592,12 +616,15 @@ Module.register("MMM-WeatherChart", {
     wrapper.className = "weather-chart-wrapper";
 
     if (this.errorMessage && !this.weatherData) {
-      wrapper.innerHTML = `<div class="weather-chart-error bright small">${this.errorMessage}</div>`;
+      const errorElement = document.createElement("div");
+      errorElement.className = "weather-chart-error bright small";
+      errorElement.textContent = this.errorMessage;
+      wrapper.appendChild(errorElement);
       return wrapper;
     }
 
     if (!this.weatherData?.current || !Array.isArray(this.weatherData.daily) || !Array.isArray(this.weatherData.hourly)) {
-      wrapper.innerHTML = '<div class="weather-chart-loading dimmed small">Wetterdaten werden geladen …</div>';
+      wrapper.innerHTML = `<div class="weather-chart-loading dimmed small">${this.translate("loading")}</div>`;
       return wrapper;
     }
 
@@ -606,7 +633,7 @@ Module.register("MMM-WeatherChart", {
     const showHourlyForecast = this.isCardEnabled("hourlyForecast");
 
     if (!showCurrentWeather && !showDailyForecast && !showHourlyForecast) {
-      wrapper.innerHTML = '<div class="weather-chart-loading dimmed small">Keine Wetterkarten aktiviert.</div>';
+      wrapper.innerHTML = `<div class="weather-chart-loading dimmed small">${this.translate("noCardsEnabled")}</div>`;
       return wrapper;
     }
 
@@ -617,8 +644,8 @@ Module.register("MMM-WeatherChart", {
 
     if (showDateTime) wrapper.appendChild(this.createDateTimeCard());
     if (showCurrentWeather) wrapper.appendChild(this.createCurrentWeatherCard());
-    if (showHourlyForecast) wrapper.appendChild(this.createForecastCard("Stündliche Vorhersage", "hourly"));
-    if (showDailyForecast) wrapper.appendChild(this.createForecastCard("Tägliche Vorhersage", "daily"));
+    if (showHourlyForecast) wrapper.appendChild(this.createForecastCard(this.translate("hourlyForecast"), "hourly"));
+    if (showDailyForecast) wrapper.appendChild(this.createForecastCard(this.translate("dailyForecast"), "daily"));
 
     return wrapper;
   },

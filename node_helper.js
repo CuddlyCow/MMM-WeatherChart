@@ -147,14 +147,16 @@ module.exports = NodeHelper.create({
   async fetchWeatherData() {
     try {
       if (!this.config?.appid) {
-        throw new Error(
-          "Kein OpenWeather-API-Key in der config.js angegeben."
+        throw Object.assign(
+          new Error("Kein OpenWeather-API-Key in der config.js angegeben."),
+          { code: "MISSING_API_KEY" }
         );
       }
 
       if (!Number.isFinite(Number(this.config?.lat)) || !Number.isFinite(Number(this.config?.lon))) {
-        throw new Error(
-          "Keine gültigen Koordinaten (lat/lon) in der config.js angegeben."
+        throw Object.assign(
+          new Error("Keine gültigen Koordinaten (lat/lon) in der config.js angegeben."),
+          { code: "INVALID_COORDINATES" }
         );
       }
 
@@ -185,14 +187,18 @@ module.exports = NodeHelper.create({
       const response = await fetch(apiUrl);
 
       if (!response.ok) {
-        throw new Error(`OpenWeather-Fehler: HTTP ${response.status}`);
+        throw Object.assign(
+          new Error(`OpenWeather-Fehler: HTTP ${response.status}`),
+          { code: "HTTP_ERROR", status: response.status }
+        );
       }
 
       const weatherData = await response.json();
 
       if (!this.hasRequiredWeatherData(weatherData)) {
-        throw new Error(
-          "Die API-Antwort enthält nicht alle benötigten Wetterdaten."
+        throw Object.assign(
+          new Error("Die API-Antwort enthält nicht alle benötigten Wetterdaten."),
+          { code: "INCOMPLETE_DATA" }
         );
       }
 
@@ -238,9 +244,11 @@ module.exports = NodeHelper.create({
       return;
     }
 
-    // Kein gültiger Cache verfügbar → sende Fehlermeldung
+    // Kein gültiger Cache verfügbar → sende Fehlercode zur Übersetzung im Frontend
     this.sendSocketNotification("WEATHER_ERROR", {
-      message: `Wetterdaten konnten nicht geladen werden: ${error.message}`
+      code: error.code || "FETCH_FAILED",
+      status: error.status,
+      detail: error.message
     });
   }
 });

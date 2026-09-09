@@ -73,11 +73,11 @@
     createWindScale(moduleInstance) {
       const scale = document.createElement("div");
       scale.className = "weather-current-wind-scale";
-      scale.setAttribute("aria-label", "Skala für Windgeschwindigkeit");
+      scale.setAttribute("aria-label", moduleInstance.translate("windScaleAriaLabel"));
 
       const title = document.createElement("div");
       title.className = "weather-current-wind-scale-title";
-      title.textContent = "Windgeschwindigkeit";
+      title.textContent = moduleInstance.translate("windScaleTitle");
 
       const bar = document.createElement("div");
       bar.className = "weather-current-wind-scale-bar";

@@ -68,7 +68,7 @@
       const labels = forecastData.map((entry) => {
         const date = new Date(entry.dt * 1000);
         return useHourlyForecast
-          ? date.toLocaleTimeString(moduleInstance.config.locale, { hour: "2-digit", minute: "2-digit" })
+          ? date.toLocaleTimeString(moduleInstance.config.locale, { hour: "numeric" }).toLowerCase()
           : date.toLocaleDateString(moduleInstance.config.locale, { weekday: "short" });
       });
 
@@ -130,7 +130,9 @@
             {
               id: "maximumTemperature",
               type: "line",
-              label: useHourlyForecast ? `Temperatur (${temperatureUnit})` : `Maximaltemperatur (${temperatureUnit})`,
+              label: useHourlyForecast
+                ? moduleInstance.translate("temperature", { unit: temperatureUnit })
+                : moduleInstance.translate("maximumTemperature", { unit: temperatureUnit }),
               data: temperatures,
               hidden: !moduleInstance.isCardEnabled("maximumTemperature"),
               borderWidth: 4,
@@ -153,7 +155,7 @@
             {
               id: "minimumTemperature",
               type: "line",
-              label: `Minimaltemperatur (${temperatureUnit})`,
+              label: moduleInstance.translate("minimumTemperature", { unit: temperatureUnit }),
               data: minimumTemperatures,
               hidden: useHourlyForecast || !moduleInstance.isCardEnabled("minimumTemperature"),
               borderWidth: 3,
@@ -177,7 +179,7 @@
             {
               id: "precipitation",
               type: "bar",
-              label: "Niederschlag (mm)",
+              label: moduleInstance.translate("precipitation"),
               data: precipitation,
               hidden: !moduleInstance.isCardEnabled("precipitation"),
               borderWidth: 1,

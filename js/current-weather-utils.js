@@ -16,9 +16,9 @@
       }
 
       return new Date(seconds * 1000).toLocaleTimeString(locale, {
-        hour: "2-digit",
+        hour: "numeric",
         minute: "2-digit"
-      });
+      }).toLowerCase();
     },
 
     formatTemperature(value, unit = "°C") {
