@@ -62,13 +62,10 @@ Module.register("MMM-WeatherChart", {
     this.timeFormatter = new Intl.DateTimeFormat(this.config.locale || "de-DE", {
       hour: "2-digit",
       minute: "2-digit",
-      second: "2-digit",
       hourCycle: "h23"
     });
 
-    this.currentDateTimeTimer = setInterval(() => {
-      this.updateCurrentDateTime();
-    }, 1000);
+    this.scheduleDateTimeUpdate();
 
     MMMWeatherChartIconPlugin.preloadWeatherFont();
 
@@ -139,6 +136,16 @@ Module.register("MMM-WeatherChart", {
     const { date, time } = this.formatCurrentDateTime();
     this.dateTimeDateElement.textContent = date;
     this.dateTimeTimeElement.textContent = time;
+  },
+
+  scheduleDateTimeUpdate() {
+    this.updateCurrentDateTime();
+
+    const msUntilNextMinute = 60000 - (Date.now() % 60000);
+    this.currentDateTimeTimer = setTimeout(() => {
+      this.updateCurrentDateTime();
+      this.currentDateTimeTimer = setInterval(() => this.updateCurrentDateTime(), 60000);
+    }, msUntilNextMinute);
   },
 
   // ==================== WEATHER ICONS ====================
