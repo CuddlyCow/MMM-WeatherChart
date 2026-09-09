@@ -245,7 +245,7 @@
         // Zeichne Text
         if (hasText) {
           const textX = groupLeft + (hasArrow ? arrowBoxWidth + arrowGap : 0) + textWidth / 2;
-          chart.ctx.fillStyle = chartTheme.colorTextDimmed;
+          chart.ctx.fillStyle = chartTheme.colorText;
           chart.ctx.fillText(windText, textX, y);
         }
 

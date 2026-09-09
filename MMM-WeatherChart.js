@@ -1,3 +1,18 @@
+const SUN_ARC_NS = "http://www.w3.org/2000/svg";
+const SUN_ARC_WIDTH = 200;
+const SUN_ARC_VIEWBOX_HEIGHT = 49;
+const SUN_ARC_BASELINE_Y = 47;
+const SUN_ARC_INSET_X = 33;
+const SUN_ARC_SWEEP_DEG = 120;
+const SUN_ARC_MARKER_RADIUS = 6;
+// Breite/Abstand des Sonne-/Mond-Symbols (fa-solid, font-size-xsmall) inkl. seines margin-right.
+const SUN_ARC_LABEL_ICON_HALF_WIDTH = 9;
+const SUN_ARC_LABEL_ICON_MARGIN = 4;
+// Die Symbolzeile liegt unterhalb der Bogen-Basislinie; damit die Symbolmitte auf dem
+// gedachten, weitergeführten Kreisbogen liegt (statt auf der Sehne), müssen die Symbole
+// zusätzlich nach außen rücken. Empirisch ermittelt für die aktuelle Bogengeometrie.
+const SUN_ARC_LABEL_OUTWARD_SHIFT = 6;
+
 Module.register("MMM-WeatherChart", {
   // ==================== KONFIGURATION ====================
   defaults: {
@@ -106,6 +121,7 @@ Module.register("MMM-WeatherChart", {
       this.file("js/color-utils.js"),
       this.file("js/temperature-utils.js"),
       this.file("js/wind-utils.js"),
+      this.file("js/sun-path-utils.js"),
       this.file("js/current-weather-utils.js"),
       this.file("js/weather-icon-utils.js"),
       this.file("js/weather-icon-plugin.js"),
@@ -139,13 +155,18 @@ Module.register("MMM-WeatherChart", {
   },
 
   scheduleDateTimeUpdate() {
-    this.updateCurrentDateTime();
+    this.handleMinuteTick();
 
     const msUntilNextMinute = 60000 - (Date.now() % 60000);
     this.currentDateTimeTimer = setTimeout(() => {
-      this.updateCurrentDateTime();
-      this.currentDateTimeTimer = setInterval(() => this.updateCurrentDateTime(), 60000);
+      this.handleMinuteTick();
+      this.currentDateTimeTimer = setInterval(() => this.handleMinuteTick(), 60000);
     }, msUntilNextMinute);
+  },
+
+  handleMinuteTick() {
+    this.updateCurrentDateTime();
+    this.updateSunPosition();
   },
 
   // ==================== WEATHER ICONS ====================
@@ -257,9 +278,11 @@ Module.register("MMM-WeatherChart", {
     symbolTempRow.appendChild(weatherIcon);
     symbolTempRow.appendChild(temperature);
 
+    const weatherDescriptionText = weather.description || "–";
     const weatherDescription = document.createElement("div");
     weatherDescription.className = "weather-current-description";
-    weatherDescription.textContent = weather.description || "–";
+    if (weatherDescriptionText.length > 20) weatherDescription.classList.add("is-long");
+    weatherDescription.textContent = weatherDescriptionText;
 
     primary.appendChild(symbolTempRow);
     primary.appendChild(weatherDescription);
@@ -405,7 +428,7 @@ Module.register("MMM-WeatherChart", {
     return details;
   },
 
-  createSunTimeEntry(iconClass, timestamp) {
+  createSunTimeEntry(iconClass, timestamp, iconFirst = true) {
     const currentWeatherUtils = MMMWeatherChartCurrentWeatherUtils;
 
     const sunTime = document.createElement("div");
@@ -418,8 +441,15 @@ Module.register("MMM-WeatherChart", {
     icon.className = `fa-solid ${iconClass}`;
     icon.setAttribute("aria-hidden", "true");
 
-    value.appendChild(icon);
-    value.appendChild(document.createTextNode(` ${currentWeatherUtils.formatTime(timestamp, this.config.locale)}`));
+    const time = currentWeatherUtils.formatTime(timestamp, this.config.locale);
+
+    if (iconFirst) {
+      value.appendChild(icon);
+      value.appendChild(document.createTextNode(` ${time}`));
+    } else {
+      value.appendChild(document.createTextNode(`${time} `));
+      value.appendChild(icon);
+    }
 
     sunTime.appendChild(value);
     return sunTime;
@@ -428,11 +458,69 @@ Module.register("MMM-WeatherChart", {
   createCurrentWeatherSunTimes(current) {
     const sunTimes = document.createElement("div");
     sunTimes.className = "weather-current-sun-times";
+    sunTimes.appendChild(this.createSunArc());
 
-    sunTimes.appendChild(this.createSunTimeEntry("fa-sun", current.sunrise));
-    sunTimes.appendChild(this.createSunTimeEntry("fa-moon", current.sunset));
+    const labels = document.createElement("div");
+    labels.className = "weather-current-sun-labels";
+    const labelInsetPercent = (SUN_ARC_INSET_X / SUN_ARC_WIDTH) * 100;
+    labels.style.paddingLeft = `calc(${labelInsetPercent}% - ${SUN_ARC_LABEL_ICON_HALF_WIDTH + SUN_ARC_LABEL_OUTWARD_SHIFT}px)`;
+    labels.style.paddingRight = `calc(${labelInsetPercent}% - ${SUN_ARC_LABEL_ICON_HALF_WIDTH + SUN_ARC_LABEL_ICON_MARGIN + SUN_ARC_LABEL_OUTWARD_SHIFT}px)`;
+    labels.appendChild(this.createSunTimeEntry("fa-sun", current.sunrise));
+    labels.appendChild(this.createSunTimeEntry("fa-moon", current.sunset, false));
+    sunTimes.appendChild(labels);
+
+    this.currentSunTimes = {
+      sunrise: Number(current.sunrise),
+      sunset: Number(current.sunset)
+    };
+    this.updateSunPosition();
 
     return sunTimes;
+  },
+
+  createSunArc() {
+    const sunPathUtils = MMMWeatherChartSunPathUtils;
+    const geometry = sunPathUtils.getArcGeometry(SUN_ARC_WIDTH, SUN_ARC_BASELINE_Y, SUN_ARC_INSET_X, SUN_ARC_SWEEP_DEG);
+
+    const svg = document.createElementNS(SUN_ARC_NS, "svg");
+    svg.classList.add("weather-current-sun-arc");
+    svg.setAttribute("viewBox", `0 0 ${SUN_ARC_WIDTH} ${SUN_ARC_VIEWBOX_HEIGHT}`);
+    svg.setAttribute("preserveAspectRatio", "xMidYMax meet");
+    svg.style.aspectRatio = `${SUN_ARC_WIDTH} / ${SUN_ARC_VIEWBOX_HEIGHT}`;
+
+    const path = document.createElementNS(SUN_ARC_NS, "path");
+    path.classList.add("weather-current-sun-arc-path");
+    path.setAttribute("d", sunPathUtils.getArcPath(geometry));
+
+    const marker = document.createElementNS(SUN_ARC_NS, "circle");
+    marker.classList.add("weather-current-sun-marker");
+    marker.setAttribute("r", String(SUN_ARC_MARKER_RADIUS));
+
+    svg.appendChild(path);
+    svg.appendChild(marker);
+
+    this.sunArcGeometry = geometry;
+    this.sunArcPathElement = path;
+    this.sunMarkerElement = marker;
+
+    return svg;
+  },
+
+  updateSunPosition() {
+    if (!this.sunMarkerElement || !this.sunArcPathElement || !this.currentSunTimes) return;
+
+    const sunPathUtils = MMMWeatherChartSunPathUtils;
+    const { sunrise, sunset } = this.currentSunTimes;
+    const { progress, isDaytime } = sunPathUtils.getSunProgress(Date.now() / 1000, sunrise, sunset);
+
+    this.sunArcPathElement.classList.toggle("is-night", !isDaytime);
+    this.sunMarkerElement.classList.toggle("is-hidden", !isDaytime);
+
+    if (isDaytime) {
+      const point = sunPathUtils.getPointOnArc(this.sunArcGeometry, progress);
+      this.sunMarkerElement.setAttribute("cx", point.x);
+      this.sunMarkerElement.setAttribute("cy", point.y);
+    }
   },
 
   createUpdateInfo() {

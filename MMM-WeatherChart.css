@@ -134,12 +134,12 @@
 .MMM-WeatherChart .weather-current-container {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
-  grid-template-rows: 28px 160px auto;
+  grid-template-rows: 22px 146px auto;
   column-gap: 10px;
   row-gap: 0;
   width: 100%;
   min-height: 224px;
-  padding: 14px 18px 12px;
+  padding: 10px 18px 8px;
 }
 
 /* Überschrift links */
@@ -210,6 +210,12 @@
   font-size: var(--font-size-small);
   line-height: 1.2;
   text-align: center;
+}
+
+/* Kleinere Schrift für lange Beschreibungen, damit die feste Zeilenhöhe reicht */
+.MMM-WeatherChart .weather-current-description.is-long {
+  font-size: var(--font-size-xsmall);
+  line-height: 1.05;
 }
 
 /* Temperatur */
@@ -377,18 +383,54 @@
 /* Sonnenzeiten */
 .MMM-WeatherChart .weather-current-sun-times {
   display: flex;
+  flex-direction: column;
   grid-column: 1;
   grid-row: 3;
   align-self: stretch;
-  align-items: center;
   justify-content: center;
   width: 100%;
   min-width: 0;
   min-height: 0;
   margin: 0;
-  padding: 14px 0 0;
-  gap: 18px;
-  transform: translateY(8px);
+  padding: 3px 0 0;
+}
+
+/* Sonnenbogen (Sonnenaufgang bis Sonnenuntergang) */
+.MMM-WeatherChart .weather-current-sun-arc {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.MMM-WeatherChart .weather-current-sun-arc-path {
+  fill: none;
+  stroke: rgba(255, 204, 102, 0.9);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke 1s ease;
+}
+
+.MMM-WeatherChart .weather-current-sun-arc-path.is-night {
+  stroke: rgba(120, 140, 165, 0.55);
+}
+
+.MMM-WeatherChart .weather-current-sun-marker {
+  fill: #ffcc66;
+  filter: drop-shadow(0 0 4px rgba(255, 204, 102, 0.85));
+  transition: opacity 0.5s ease;
+}
+
+.MMM-WeatherChart .weather-current-sun-marker.is-hidden {
+  opacity: 0;
+}
+
+.MMM-WeatherChart .weather-current-sun-labels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 0;
 }
 
 .MMM-WeatherChart .weather-current-sun-value {

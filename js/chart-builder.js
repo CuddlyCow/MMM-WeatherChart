@@ -227,7 +227,7 @@
                 weight: ctx.dataset.id === "precipitation" ? "400" : "700"
               }),
               formatter: (value, ctx) => {
-                if (ctx.dataset.id.includes("Temperature")) return `${value} ${temperatureUnit}`;
+                if (ctx.dataset.id.includes("Temperature")) return `${value}°`;
                 if (ctx.dataset.id === "precipitation") return value > 0 ? `${value} mm` : "";
                 return "";
               }
